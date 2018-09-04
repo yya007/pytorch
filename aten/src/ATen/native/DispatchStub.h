@@ -50,17 +50,17 @@ struct AT_API DispatchStub {
   static_assert(std::is_pointer<FnPtr>::value, "FnPtr should be a pointer type");
 
   template <typename... ArgTypes>
-  void operator()(DeviceType device_type, ArgTypes&&... args) {
-    if (device_type == DeviceType::CPU) {
+  void operator()(Backend backend, ArgTypes... args) {
+    if (backend == Backend::CPU) {
       if (!cpu_dispatch_ptr) {
         cpu_dispatch_ptr = choose_cpu_impl();
       }
-      (*cpu_dispatch_ptr)(std::forward<ArgTypes>(args)...);
-    } else if (device_type == DeviceType::CUDA) {
+      (*cpu_dispatch_ptr)(args...);
+    } else if (backend == Backend::CUDA) {
       AT_ASSERTM(cuda_dispatch_ptr, "DispatchStub: missing CUDA kernel");
-      (*cuda_dispatch_ptr)(std::forward<ArgTypes>(args)...);
+      (*cuda_dispatch_ptr)(args...);
     } else {
-      AT_ERROR("DispatchStub: unsupported device type", device_type);
+      AT_ERROR("DispatchStub: unsupported backend", backend);
     }
   }
 
@@ -109,33 +109,12 @@ struct RegisterDispatch {
 
 #define DEFINE_DISPATCH(name) struct name name
 
-#define REGISTER_ARCH_DISPATCH(name, arch, fn) \
-  template <> decltype(fn) DispatchStub<decltype(fn), struct name>::arch = fn;
-
-#ifdef HAVE_AVX_CPU_DEFINITION
-#define REGISTER_AVX_DISPATCH(name, fn) REGISTER_ARCH_DISPATCH(name, AVX, fn)
-#else
-#define REGISTER_AVX_DISPATCH(name, fn)
-#endif
-
-#ifdef HAVE_AVX2_CPU_DEFINITION
-#define REGISTER_AVX2_DISPATCH(name, fn) REGISTER_ARCH_DISPATCH(name, AVX2, fn)
-#else
-#define REGISTER_AVX2_DISPATCH(name, fn)
-#endif
-
-#define REGISTER_NO_CPU_DISPATCH(name, fn_type)                                \
-  REGISTER_ARCH_DISPATCH(name, DEFAULT, static_cast<fn_type>(nullptr))         \
-  REGISTER_AVX_DISPATCH(name, static_cast<fn_type>(nullptr))                   \
-  REGISTER_AVX2_DISPATCH(name, static_cast<fn_type>(nullptr))
-
-#define REGISTER_CUDA_DISPATCH(name, fn) \
-  static RegisterDispatch<decltype(fn), struct name> name ## __register(name, fn);
-
 #if defined(__CUDACC__)
-#define REGISTER_DISPATCH(name, fn) REGISTER_CUDA_DISPATCH(name, fn)
+#define REGISTER_DISPATCH(name, fn) \
+  static RegisterDispatch<decltype(fn), struct name> name ## __register(name, fn);
 #elif defined(CPU_CAPABILITY)
-#define REGISTER_DISPATCH(name, fn) REGISTER_ARCH_DISPATCH(name, CPU_CAPABILITY, fn)
+#define REGISTER_DISPATCH(name, fn) \
+  template <> decltype(fn) DispatchStub<decltype(fn), struct name>::CPU_CAPABILITY = fn;
 #endif
 
 

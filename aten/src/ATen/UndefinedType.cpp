@@ -15,19 +15,19 @@ bool UndefinedType::is_cuda() const { return false; }
 bool UndefinedType::is_sparse() const { return false; }
 bool UndefinedType::is_distributed() const { return false; }
 
-Storage UndefinedType::storage(bool resizable) const {
+std::unique_ptr<Storage> UndefinedType::storage(bool resizable) const {
   AT_ERROR("storage not defined for UndefinedType");
 }
-Storage UndefinedType::storage(size_t size, bool resizable) const {
+std::unique_ptr<Storage> UndefinedType::storage(size_t size, bool resizable) const {
   AT_ERROR("storage(size_t) not defined for UndefinedType");
 }
-Storage UndefinedType::storageFromBlob(void * data, int64_t size, const std::function<void(void*)> & deleter) const {
+std::unique_ptr<Storage> UndefinedType::storageFromBlob(void * data, int64_t size, const std::function<void(void*)> & deleter) const {
   AT_ERROR("storageFromBlob not defined for UndefinedType");
 }
-Storage UndefinedType::unsafeStorageFromTH(void * th_pointer, bool retain) const {
+std::unique_ptr<Storage> UndefinedType::unsafeStorageFromTH(void * th_pointer, bool retain) const {
   AT_ERROR("unsafeStorageFromTH not defined for UndefinedType");
 }
-Storage UndefinedType::storageWithAllocator(int64_t size, Allocator* allocator) const {
+std::unique_ptr<Storage> UndefinedType::storageWithAllocator(int64_t size, Allocator* allocator) const {
   AT_ERROR("storageWithAllocator not defined for UndefinedType");
 }
 Tensor UndefinedType::unsafeTensorFromTH(void * th_pointer, bool retain) const {

@@ -6,7 +6,7 @@ namespace caffe2 {
 REGISTER_CPU_OPERATOR(ATen, ATenOp<CPUContext>);
 template<>
 at::Backend ATenOp<CPUContext>::backend() const {
-  return at::Backend::CPU;
+  return at::kCPU;
 }
 
 OPERATOR_SCHEMA(ATen);

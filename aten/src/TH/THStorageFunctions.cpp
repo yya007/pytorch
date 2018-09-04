@@ -1,5 +1,4 @@
 #include <climits>
-#include <ATen/core/intrusive_ptr.h>
 
 #include "THStorageFunctions.hpp"
 
@@ -16,11 +15,11 @@
 #include "THGenerateHalfType.h"
 
 THStorage* THStorage_new(at::ScalarType scalar_type) {
-  THStorage* storage = c10::make_intrusive<at::StorageImpl>(
-      at::scalarTypeToDataType(scalar_type),
+  THStorage* storage = new THStorage(
+      scalar_type,
       0,
       getTHDefaultAllocator(),
-      true).release();
+      true);
   return storage;
 }
 
@@ -29,7 +28,25 @@ void THStorage_free(THStorage* storage) {
   if (!storage) {
     return;
   }
-  c10::raw::intrusive_ptr::decref(storage);
+  storage->release();
+}
+
+// Manually retains a weak reference
+void THStorage_weakRetain(THStorage *weak_storage) {
+  weak_storage->weak_retain();
+}
+
+// Releases a weak reference
+void THStorage_weakFree(THStorage *weak_storage) {
+  weak_storage->weak_release();
+}
+
+// Given a weak reference, returns a strong reference to a storage (which must
+// be freed when done) or null if the storage is already dead.
+THStorage* THStorage_weakLock(THStorage *weak_storage) {
+  if (weak_storage->weak_lock())
+    return weak_storage;
+  return nullptr;
 }
 
 ptrdiff_t THStorage_size(const THStorage *self)
@@ -40,19 +57,20 @@ ptrdiff_t THStorage_size(const THStorage *self)
 void THStorage_retain(THStorage *storage)
 {
   if (storage) {
-    c10::raw::intrusive_ptr::incref(storage);
+    storage->retain();
   }
 }
 
 void THStorage_resize(THStorage* storage, ptrdiff_t size) {
   if (storage->resizable()) {
     /* case when the allocator does not have a realloc defined */
-    at::DataPtr new_data;
-    if (size != 0) {
-      new_data = storage->allocator()->allocate(storage->elementSize() * size);
-    }
-    at::DataPtr old_data = storage->set_data_ptr(std::move(new_data));
+    at::DataPtr old_data;
+    std::swap(old_data, storage->data_ptr());
     ptrdiff_t old_size = storage->size();
+    if (size != 0) {
+      storage->set_data_ptr(
+          storage->allocator()->allocate(storage->elementSize() * size));
+    }
     storage->set_size(size);
     if (old_data != nullptr) {
       ptrdiff_t copy_size = old_size;

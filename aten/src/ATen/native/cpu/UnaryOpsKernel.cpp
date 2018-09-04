@@ -104,7 +104,7 @@ static void sigmoid_kernel(Tensor& result, const Tensor& self) {
 
 #define IMPLEMENT_FLOAT_KERNEL(dispatchtypes, op)                          \
   static void op##_kernel(Tensor& result, const Tensor& self) {            \
-    checkBackend(#op, {result}, Backend::CPU);                             \
+    checkBackend(#op, {result}, kCPU);                                     \
     AT_DISPATCH_##dispatchtypes##_TYPES(self.type(), #op, [&] {            \
       if (self.is_contiguous() && result.is_contiguous()) {                \
         vml::v##op(                                                        \

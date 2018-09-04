@@ -6,7 +6,7 @@ namespace caffe2 {
 REGISTER_CUDA_OPERATOR(ATen, ATenOp<CUDAContext>);
 template<>
 at::Backend ATenOp<CUDAContext>::backend() const {
-  return at::Backend::CUDA;
+  return at::kCUDA;
 }
 
 namespace math {

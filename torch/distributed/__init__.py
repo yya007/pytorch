@@ -33,7 +33,8 @@ def is_available():
 
 
 def destroy_process_group():
-    r"""Destroy the initialized distributed package
+    """
+    Destroy the initialized distributed package
     """
     global _backend
     global _initialized
@@ -43,31 +44,25 @@ def destroy_process_group():
 
 
 def is_initialized():
-    r"""Checking if the process group has been initialized
+    """Checking if the process group has been initialized
     """
     return _initialized == _INITIALIZED_PG
 
 
 def init_process_group(backend, init_method='env://', **kwargs):
-    r"""Initializes the distributed package.
+    """Initializes the distributed package.
 
     Arguments:
         backend (str): Name of the backend to use. Depending on build-time configuration
-            valid values include: ``tcp``, ``mpi``, ``gloo`` and ``nccl``.
+            valid values include: ``tcp``, ``mpi`` and ``gloo``.
         init_method (str, optional): URL specifying how to initialize the package.
         world_size (int, optional): Number of processes participating in the job.
         rank (int, optional): Rank of the current process.
         group_name (str, optional): Group name. See description of init methods.
 
     To enable ``backend == mpi``, PyTorch needs to built from source on a system that
-    supports MPI. If you want to use Open MPI with CUDA-aware support, please use
-    Open MPI major version 2 and above.
-
-    .. note::
-        This method initializes CUDA context. Therefore, if multiple processes
-        run on a single machine but use different GPUs, make sure to use
-        :func:`torch.cuda.set_device` before this method to avoid unnecessarily
-        creating context on the first visible device.
+    supports MPI. If you want to use Openmpi with CUDA-aware support, please use Openmpi
+    major version 2 and above.
 
     """
     world_size = kwargs.pop('world_size', -1)
@@ -85,7 +80,6 @@ def init_process_group(backend, init_method='env://', **kwargs):
     # Checking and assigning the distributed backend
     global _backend
 
-    backend = backend.lower()
     if backend == "tcp":
         _backend = dist_backend.TCP
     elif backend == "mpi":
@@ -114,7 +108,7 @@ def init_master_worker(backend, init_method='env://', **kwargs):
                                         WARNING
     ================================================================================
     Master-worker mode is still experimental. The API will change without
-    notice and we do not guarantee full correctness and expected performance yet.
+    notice and we're can't guarantee full correctness and expected performance yet.
     We'll announce it once it's ready.
     """)
     world_size = kwargs.pop('world_size', -1)
@@ -162,24 +156,23 @@ class _DistributedRequest(object):
 
 
 def get_rank():
-    r"""Returns the rank of current process.
+    """Returns the rank of current process.
 
     Rank is a unique identifier assigned to each process within a distributed
-    group. They are always consecutive integers ranging from ``0`` to
-    ``world_size - 1`` (inclusive).
+    group. They are always consecutive integers ranging from 0 to ``world_size``.
     """
     assert torch.distributed._initialized
     return torch._C._dist_get_rank()
 
 
 def get_world_size():
-    r"""Returns the number of processes in the distributed group."""
+    """Returns the number of processes in the distributed group."""
     assert torch.distributed._initialized
     return torch._C._dist_get_num_processes()
 
 
 def isend(tensor, dst):
-    r"""Sends a tensor asynchronously.
+    """Sends a tensor asynchronously.
 
     Arguments:
         tensor (Tensor): Tensor to send.
@@ -194,7 +187,7 @@ def isend(tensor, dst):
 
 
 def irecv(tensor, src):
-    r"""Receives a tensor asynchronously.
+    """Receives a tensor asynchronously.
 
     Arguments:
         tensor (Tensor): Tensor to fill with received data.
@@ -209,7 +202,7 @@ def irecv(tensor, src):
 
 
 def send(tensor, dst):
-    r"""Sends a tensor synchronously.
+    """Sends a tensor synchronously.
 
     Arguments:
         tensor (Tensor): Tensor to send.
@@ -221,7 +214,7 @@ def send(tensor, dst):
 
 
 def recv(tensor, src=None):
-    r"""Receives a tensor synchronously.
+    """Receives a tensor synchronously.
 
     Arguments:
         tensor (Tensor): Tensor to fill with received data.
@@ -239,16 +232,15 @@ def recv(tensor, src=None):
 
 
 def broadcast_multigpu(tensor_list, src, group=group.WORLD):
-    r"""Broadcasts the tensor to the whole group with multiple GPU tensors
+    """Broadcasts the tensor to the whole group with multiple GPU tensors
     per node.
 
-    :attr:`tensor` must have the same number of elements in all the GPUs from
+    ``tensor`` must have the same number of elements in all the GPUs from
     all processes participating in the collective. each tensor in the list must
-    be on a different GPU.
+    be on a different GPU
 
-    .. note::
-      Only NCCL backend is currently supported. :attr:`tensor_list` should only
-      contain GPU tensors.
+    Only nccl backend is currently supported
+    tensors should only be GPU tensors
 
     Arguments:
         tensor_list (List[Tensor]): Tensors that participate in the collective
@@ -269,15 +261,14 @@ def broadcast_multigpu(tensor_list, src, group=group.WORLD):
 
 
 def broadcast(tensor, src, group=group.WORLD):
-    r"""Broadcasts the tensor to the whole group.
+    """Broadcasts the tensor to the whole group.
 
-    :attr:`tensor` must have the same number of elements in all processes
+    ``tensor`` must have the same number of elements in all processes
     participating in the collective.
 
     Arguments:
-        tensor (Tensor): Data to be sent if :attr:`src` is the rank of
-            current process, and tensor to be used to save received data
-            otherwise.
+        tensor (Tensor): Data to be sent if ``src`` is the rank of current
+            process, and tensor to be used to save received data otherwise.
         src (int): Source rank.
         group (optional): Group of the collective.
     """
@@ -287,21 +278,20 @@ def broadcast(tensor, src, group=group.WORLD):
 
 
 def all_reduce_multigpu(tensor_list, op=reduce_op.SUM, group=group.WORLD):
-    r"""Reduces the tensor data across all machines in such a way that all get
+    """Reduces the tensor data across all machines in such a way that all get
     the final result. This function reduces a number of tensors on every node,
-    while each tensor resides on a different GPU.
+    while each tensor resides on different GPUs.
     Therefore, the input tensor in the tensor list needs to be GPU tensors.
     Also, each tensor in the tensor list needs to reside on a different GPU.
 
-    After the call, all tensors in :attr:`tensor_list` will be bitwise identical
-    in all processes.
+    After the call, all ``tensor`` in ``tensor_list`` is going to be bitwise
+    identical in all processes.
 
-    .. note::
-      Only NCCL backend is currently supported. :attr:`tensor_list` should only
-      contain GPU tensors.
+    Only nccl backend is currently supported
+    tensors should only be GPU tensors
 
     Arguments:
-        tensor_list (List[Tensor]): List of input and output tensors of
+        tensor list (List[Tensor]): List of input and output tensors of
             the collective. The function operates in-place and requires that
             each tensor to be a GPU tensor on different GPUs.
             You also need to make sure that ``len(tensor_list)`` is the same for
@@ -318,10 +308,10 @@ def all_reduce_multigpu(tensor_list, op=reduce_op.SUM, group=group.WORLD):
 
 
 def all_reduce(tensor, op=reduce_op.SUM, group=group.WORLD):
-    r"""Reduces the tensor data across all machines in such a way that all get
+    """Reduces the tensor data across all machines in such a way that all get
     the final result.
 
-    After the call :attr:`tensor` will be bitwise identical in all processes.
+    After the call ``tensor`` is going to be bitwise identical in all processes.
 
     Arguments:
         tensor (Tensor): Input and output of the collective. The function
@@ -336,15 +326,14 @@ def all_reduce(tensor, op=reduce_op.SUM, group=group.WORLD):
 
 
 def reduce_multigpu(tensor_list, dst, op=reduce_op.SUM, group=group.WORLD):
-    r"""Reduces the tensor data on multiple GPUs across all machines. Each tensor
-    in :attr`tensor_list` should reside on a separate GPU.
+    """Reduces the tensor data on multiple GPUs across all machines. Each tensor
+    in ``tensor_list`` should reside on a separate GPU
 
-    Only the GPU of ``tensor_list[0]`` on the process with rank :attr:`dst` is
+    Only the GPU of ``tensor_list[0]`` on the process with rank ``dst`` is
     going to receive the final result.
 
-    .. note::
-      Only NCCL backend is currently supported. :attr:`tensor_list` should only
-      contain GPU tensors.
+    Only nccl backend is currently supported
+    tensors should only be GPU tensors
 
     Arguments:
         tensor_list (List[Tensor]): Input and output GPU tensors of the
@@ -364,9 +353,9 @@ def reduce_multigpu(tensor_list, dst, op=reduce_op.SUM, group=group.WORLD):
 
 
 def reduce(tensor, dst, op=reduce_op.SUM, group=group.WORLD):
-    r"""Reduces the tensor data across all machines.
+    """Reduces the tensor data across all machines.
 
-    Only the process with rank :attr:`dst` is going to receive the final result.
+    Only the process with rank ``dst`` is going to receive the final result.
 
     Arguments:
         tensor (Tensor): Input and output of the collective. The function
@@ -384,12 +373,11 @@ def reduce(tensor, dst, op=reduce_op.SUM, group=group.WORLD):
 def all_gather_multigpu(output_tensor_lists,
                         input_tensor_list,
                         group=group.WORLD):
-    r"""Gathers tensors from the whole group in a list.
-    Each tensor in :attr:`input_tensor_list` should reside on a separate GPU.
+    """Gathers tensors from the whole group in a list.
+    Each tensor in ``tensor_list`` should reside on a separate GPU
 
-    .. note::
-      Only NCCL backend is currently supported. :attr:`output_tensor_lists` and
-      :attr:`input_tensor_list` should only contain GPU tensors.
+    Only nccl backend is currently supported
+    tensors should only be GPU tensors
 
     Arguments:
         output_tensor_lists (List[List[Tensor]]): Output lists. It should
@@ -408,7 +396,7 @@ def all_gather_multigpu(output_tensor_lists,
             therefore ``len(output_tensor_lists[i])``) need to be the same
             for all the distributed processes calling this function.
 
-        input_tensor_list (List[Tensor]): List of tensors (on different GPUs) to
+        input_tensor_list (List[Tensor]): List of tensors(on different GPUs) to
             be broadcast from current process.
             Note that ``len(input_tensor_list)`` needs to be the same for
             all the distributed processes calling this function.
@@ -436,7 +424,7 @@ def all_gather_multigpu(output_tensor_lists,
 
 
 def all_gather(tensor_list, tensor, group=group.WORLD):
-    r"""Gathers tensors from the whole group in a list.
+    """Gathers tensors from the whole group in a list.
 
     Arguments:
         tensor_list (list[Tensor]): Output list. It should contain
@@ -453,7 +441,7 @@ def all_gather(tensor_list, tensor, group=group.WORLD):
 
 
 def gather(tensor, **kwargs):
-    r"""Gathers a list of tensors in a single process.
+    """Gathers a list of tensors in a single process.
 
     Arguments:
         tensor (Tensor): Input tensor.
@@ -482,10 +470,10 @@ def gather(tensor, **kwargs):
 
 
 def scatter(tensor, **kwargs):
-    r"""Scatters a list of tensors to all processes in a group.
+    """Scatters a list of tensors to all processes in a group.
 
     Each process will receive exactly one tensor and store its data in the
-    :attr:`tensor` argument.
+    ``tensor`` argument.
 
     Arguments:
         tensor (Tensor): Output tensor.
@@ -502,7 +490,7 @@ def scatter(tensor, **kwargs):
     scatter_list = kwargs.pop('scatter_list', None)
     _group = kwargs.pop('group', group.WORLD)
     if kwargs:
-        raise RuntimeError("got unexpected kwargs: {}".format(", ".join(kwargs.keys())))
+        raise RuntimeError("got unexpected kwargs")
     if src == my_rank:
         if scatter_list is None:
             raise RuntimeError("scatter_list is a required argument in scatter source")
@@ -514,7 +502,7 @@ def scatter(tensor, **kwargs):
 
 
 def barrier(group=group.WORLD):
-    r"""Synchronizes all processes.
+    """Synchronizes all processes.
 
     This collective blocks processes until the whole group enters this function.
 
@@ -527,9 +515,9 @@ def barrier(group=group.WORLD):
 
 
 def new_group(ranks=None):
-    r"""Creates a new distributed group.
+    """Creates a new distributed group.
 
-    This function requires that all processes in the main group (i.e., all
+    This function requires that all processes in the main group (i.e. all
     processes that are part of the distributed job) enter this function, even
     if they are not going to be members of the group. Additionally, groups
     should be created in the same order in all processes.
@@ -548,11 +536,11 @@ def new_group(ranks=None):
 
 
 def _clear_group_cache(group=group.WORLD):
-    r"""Clear the created distributed group's cached resource.
+    """Clear the created distributed group's cached resource
 
-    Only NCCL backend is currently supported.
+    Only nccl backend is currently supported
 
-    Cached resource includes NCCL communicators and CUDA events.
+    Cached resource includes NCCL communicators and CUDA events
 
     Arguments:
         group (optional): Group of the collective.

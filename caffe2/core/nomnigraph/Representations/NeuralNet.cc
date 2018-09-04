@@ -187,46 +187,24 @@ std::ostream& operator<<(
   return oss << criteria.debugString;
 }
 
-NNNodeMatchCriteria criteriaSingleOutputAndConsumer() {
+bool hasSingleOutputAndConsumer(NNGraph::NodeRef nodeRef) {
+  auto nodeOutputs = nn::getOutputs(nodeRef);
+  NOM_REQUIRE_OR_RET_FALSE(nodeOutputs.size() == 1);
+  auto nodeConsumers = nn::getConsumers(nodeOutputs.front());
+  return nodeConsumers.size() == 1;
+}
+
+NNNodeMatchCriteria matchAnyNode() {
   return NNNodeMatchCriteria(
-      [](NNGraph::NodeRef nodeRef) {
-        auto nodeOutputs = nn::getOutputs(nodeRef);
-        NOM_REQUIRE_OR_RET_FALSE(nodeOutputs.size() == 1);
-        auto nodeConsumers = nn::getConsumers(nodeOutputs.front());
-        return nodeConsumers.size() == 1;
-      },
-      "Single output and consumer");
+      [](NNGraph::NodeRef /* unused */) { return true; }, "matchAnyNode");
 }
 
-NNNodeMatchCriteria criteriaSingleConsumer() {
-  return NNNodeMatchCriteria(
-      [](NNGraph::NodeRef nodeRef) {
-        auto nodeOutputs = nn::getOutputs(nodeRef);
-        NNGraph::NodeRef nodeConsumer = nullptr;
-        for (auto nodeOutput : nodeOutputs) {
-          for (auto consumer : nn::getConsumers(nodeOutput)) {
-            if (nodeConsumer && consumer && consumer != nodeConsumer) {
-              return false;
-            }
-            nodeConsumer = consumer;
-          }
-        }
-        return true;
-      },
-      "Single consumer");
-}
-
-NNNodeMatchCriteria matchTensor() {
-  return matchOp<nom::repr::Tensor>("matchTensor");
-}
-
-NNMatchGraph::NodeRef operatorSubgraph(
+NNMatchGraph::NodeRef operatorTree(
     NNMatchGraph& g,
     const NNNodeMatchCriteria& root,
     const std::vector<NNMatchGraph::NodeRef>& childrenCriteria,
     int count) {
-  return subgraph(
-      g, matchTensor(), {subgraph(g, root, childrenCriteria)}, count);
+  return tree(g, matchAnyNode(), {tree(g, root, childrenCriteria)}, count);
 }
 
 } // namespace nn

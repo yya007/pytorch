@@ -1,6 +1,5 @@
 #include "torch/csrc/jit/constants.h"
 #include "torch/csrc/jit/operator.h"
-#include "torch/csrc/jit/custom_operator.h"
 #include "torch/csrc/autograd/variable.h"
 
 namespace torch { namespace jit {
@@ -34,7 +33,7 @@ Value* insertConstant(
     n->s_(attr::string, val.toString()->string());
     n->output()->setType(StringType::get());
   } else {
-    throw constant_not_supported_error("Unsupported value kind: " + val.tagKind());
+    throw std::runtime_error("Unsupported value kind: " + val.tagKind());
   }
   if(loc)
     n->setSourceLocation(std::make_shared<SourceRange>(*loc));

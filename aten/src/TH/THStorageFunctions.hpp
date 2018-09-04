@@ -38,3 +38,6 @@ TH_API ptrdiff_t THStorage_size(const THStorage *self);
 
 TH_API void THStorage_retain(THStorage *storage);
 TH_API void THStorage_resize(THStorage *storage, ptrdiff_t size);
+
+TH_API void THStorage_weakRetain(THStorage *weak_storage);
+TH_API THStorage* THStorage_weakLock(THStorage *weak_storage);

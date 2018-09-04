@@ -44,36 +44,35 @@ TEST(NeuralNetGraph, ReplaceGraph) {
 
   auto mg = NNMatchGraph();
   // clang-format off
-  auto matchSumOutput = operatorSubgraph(mg,
-      matchOp<Sum>(), {
-        nonTerminalSubgraph(mg, matchTensor(), 2)
-      });;
-  auto pattern = subgraph(mg,
-      matchOp<Relu>(), {
-        matchSumOutput
+  auto pattern = tree(mg,
+      matchNodeType<Relu>(), {
+          operatorTree(mg,
+              matchNodeType<Sum>(), {
+                tree(mg, matchNodeType<Tensor>(), {}, 2, true)
+              }),
       });
   // clang-format on
 
-  EXPECT_FALSE(NNSubgraphMatcher::isSubgraphMatch(sum, pattern).isMatch());
+  EXPECT_FALSE(NNSubgraphMatcher::isSubtreeMatch(sum, pattern).isMatch());
   EXPECT_FALSE(
-      NNSubgraphMatcher::isSubgraphMatch(reluOutput, pattern).isMatch());
-  EXPECT_FALSE(NNSubgraphMatcher::isSubgraphMatch(input1, pattern).isMatch());
+      NNSubgraphMatcher::isSubtreeMatch(reluOutput, pattern).isMatch());
+  EXPECT_FALSE(NNSubgraphMatcher::isSubtreeMatch(input1, pattern).isMatch());
 
-  EXPECT_TRUE(NNSubgraphMatcher::isSubgraphMatch(relu, pattern).isMatch());
+  EXPECT_TRUE(NNSubgraphMatcher::isSubtreeMatch(relu, pattern).isMatch());
 
-  NNSubgraphMatcher::replaceSubgraph(
-      graph,
-      pattern,
-      [&matchSumOutput](
-          NNGraph& g,
-          NNGraph::NodeRef relu,
-          const NNSubgraphMatcher::SubgraphMatchResultType& matchResult) {
+  NNSubgraphMatcher::replaceSubtree(
+      graph, pattern, [](NNGraph& g, NNGraph::NodeRef relu) {
+        auto sumOutput = getInputs(relu)[0];
+        auto sum = getProducer(sumOutput);
+
         auto fusedNode = g.createNode(util::make_unique<SumRelu>());
-        auto sumNode =
-            getProducer(matchResult.getMatchNodeMap()->at(matchSumOutput));
-        g.replaceOutEdges(relu, fusedNode);
-        g.replaceInEdges(sumNode, fusedNode);
-        g.deleteNodes(matchResult.getMatchedSubgraph()->getNodes());
+        g.deleteNode(sumOutput);
+        g.replaceNode(relu, fusedNode);
+        g.replaceNode(sum, fusedNode);
+
+        g.deleteNode(sum);
+        g.deleteNode(relu);
+
         return true;
       });
 

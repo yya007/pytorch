@@ -1,6 +1,5 @@
 #include "ATen/cuda/CUDAStream.h"
 #include "ATen/cuda/CUDAContext.h"
-#include "ATen/cuda/CUDAEvent.h"
 #include "ATen/cuda/Exceptions.h"
 #include "ATen/core/Error.h"
 
@@ -174,10 +173,6 @@ namespace detail {
     }
   }
 
-  void CUDAStream_synchronize_with(CUDAStreamInternals* ptr, const CUDAEvent& event) {
-    AT_CUDA_CHECK(cudaStreamWaitEvent(ptr->stream, event, 0));
-  }
-
 } // namespace detail
 
   /*
@@ -197,10 +192,6 @@ namespace detail {
     AT_ASSERT(other.internals_);
 
     std::swap(internals_, other.internals_);
-  }
-
-  void CUDAStream::synchronize_with(const CUDAEvent& event) const {
-    detail::CUDAStream_synchronize_with(internals_, event);
   }
 
 } // namespace cuda

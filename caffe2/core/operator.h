@@ -19,7 +19,7 @@
 #include "caffe2/core/tensor.h"
 #include "caffe2/core/types.h"
 #include "caffe2/core/workspace.h"
-#include "caffe2/proto/caffe2_pb.h"
+#include "caffe2/proto/caffe2.pb.h"
 #include "caffe2/utils/proto_utils.h"
 
 namespace caffe2 {
@@ -338,7 +338,7 @@ class CAFFE2_API OperatorBase : public Observable<OperatorBase> {
     return !event_;
   }
 
-  virtual void FinishDeviceComputation() {
+  virtual void SyncDevice() {
     CAFFE_NOT_IMPLEMENTED;
   }
 
@@ -598,13 +598,11 @@ class CAFFE2_API Operator : public OperatorBase {
     return HasAsyncPart() && context_.SupportsAsyncScheduling();
   }
 
-  void FinishDeviceComputation() override {
-    context_.FinishDeviceComputation();
-  }
-
   const Context* getContext() const {
     return &context_;
   }
+
+  void SyncDevice() final {}
 
  protected:
   void RecordEvent(const char* err_msg = nullptr) final {
@@ -801,7 +799,7 @@ typedef Registry<
     Workspace*>* (*RegistryFunction)();
 CAFFE2_API std::map<int32_t, OperatorRegistry*>* gDeviceTypeRegistry();
 
-struct CAFFE2_API DeviceTypeRegisterer {
+struct DeviceTypeRegisterer {
   explicit DeviceTypeRegisterer(int32_t type, RegistryFunction func) {
     if (gDeviceTypeRegistry()->count(type)) {
       std::cerr << "Device type " << type
@@ -925,7 +923,7 @@ struct StaticLinkingProtector {
 // specific engines that only implement a subset of the features required by
 // the original operator schema.
 // TODO(jiayq): make more feature-complete exception message.
-class CAFFE2_API UnsupportedOperatorFeature : public std::exception {
+class UnsupportedOperatorFeature : public std::exception {
  public:
   UnsupportedOperatorFeature(const string& msg) : msg_(msg) {}
   const char* what() const noexcept override {
@@ -963,40 +961,40 @@ using PerOpEnginePrefType =
     CaffeMap<int, CaffeMap<std::string, EnginePrefType>>;
 // {device_type -> EnginePrefType}
 using GlobalEnginePrefType = CaffeMap<int, EnginePrefType>;
-CAFFE2_API void SetPerOpEnginePref(const PerOpEnginePrefType& per_op_engine_pref);
-CAFFE2_API void SetGlobalEnginePref(const GlobalEnginePrefType& global_engine_pref);
-CAFFE2_API void SetEnginePref(
+void SetPerOpEnginePref(const PerOpEnginePrefType& per_op_engine_pref);
+void SetGlobalEnginePref(const GlobalEnginePrefType& global_engine_pref);
+void SetEnginePref(
     const PerOpEnginePrefType& per_op_engine_pref,
     const GlobalEnginePrefType& global_engine_pref);
-CAFFE2_API void SetOpEnginePref(
+void SetOpEnginePref(
     const std::string& op_type,
     const CaffeMap<int, EnginePrefType>& op_pref);
 
-CAFFE2_API TensorShape GetTensorShapeOfBlob(const Blob* b);
+TensorShape GetTensorShapeOfBlob(const Blob* b);
 
-CAFFE2_API TensorShapes InferBlobShapesAndTypes(
+TensorShapes InferBlobShapesAndTypes(
     CaffeMap<string, TensorShape>& blob_desc,
     const vector<NetDef*>& nets);
 
-CAFFE2_API TensorShapes InferBlobShapesAndTypesFromWorkspace(
+TensorShapes InferBlobShapesAndTypesFromWorkspace(
     Workspace* ws,
     const vector<NetDef*>& nets);
 
-CAFFE2_API TensorShapes InferBlobShapesAndTypesFromMap(
+TensorShapes InferBlobShapesAndTypesFromMap(
     const CaffeMap<std::string, std::vector<TIndex>>& blob_dimensions,
     const vector<NetDef*>& nets);
 
-CAFFE2_API TensorShapes InferBlobShapesAndTypesFromMap(
+TensorShapes InferBlobShapesAndTypesFromMap(
     const CaffeMap<std::string, std::vector<TIndex>>& blob_dimensions,
     const CaffeMap<std::string, TensorProto_DataType>& blob_types,
     const vector<NetDef*>& nets);
 
-CAFFE2_API std::map<string, std::pair<DeviceOption, DeviceOption>> ValidateTensorDevices(
+std::map<string, std::pair<DeviceOption, DeviceOption>> ValidateTensorDevices(
     OperatorBase& op,
     const OperatorDef& op_def);
 
 // Get a set of registered operator names
-CAFFE2_API std::set<std::string> GetRegisteredOperators();
+std::set<std::string> GetRegisteredOperators();
 
 }  // namespace caffe2
 

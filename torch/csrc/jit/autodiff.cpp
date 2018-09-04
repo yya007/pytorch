@@ -52,21 +52,27 @@ bool isDifferentiable(Node * n) {
     return true;
 
   if (n->matches("aten::type_as(Tensor self, Tensor other) -> Tensor")) {
-    return static_cast<bool>(n->input(1)->type()->cast<CompleteTensorType>());
+    return static_cast<bool>(n->input(1)->type()->cast<TensorType>());
   }
   if (n->matches("aten::cat(Tensor[] tensors, int dim) -> Tensor")) {
     if (!n->is_constant(attr::dim)) return false;
     for (Value * input : n->inputs().slice(0, n->inputs().size() - 1)) {
-      if (!input->type()->cast<CompleteTensorType>()) return false;
+      if (!input->type()->cast<TensorType>()) return false;
     }
     return true;
+  }
+  if (n->matches("aten::squeeze(Tensor self) -> Tensor")) {
+    return static_cast<bool>(n->input()->type()->cast<TensorType>());
+  }
+  if (n->matches("aten::squeeze(Tensor self, int dim) -> Tensor")) {
+    return n->namedInput(attr::self)->type()->cast<TensorType>() && n->is_constant(attr::dim);
   }
   if (n->matches("aten::expand(Tensor self, int[] size, *, int implicit) -> Tensor")) {
     return n->is_constant(attr::size) && n->is_constant(attr::implicit);
   }
   if (n->matches("aten::view(Tensor self, int[] size) -> Tensor") ||
       n->matches("aten::reshape(Tensor self, int[] shape) -> Tensor")) {
-    return static_cast<bool>(n->namedInput(attr::self)->type()->cast<CompleteTensorType>());
+    return static_cast<bool>(n->namedInput(attr::self)->type()->cast<TensorType>());
   }
 
   // linear blocks may appear as inputs to graph executors, but they are removed
@@ -146,7 +152,7 @@ static std::vector<Value*> gradientForNode(Node* node, ArrayRef<Value*> grad_val
     } else if (node->matches("aten::view(Tensor self, int[] size) -> Tensor") ||
                node->matches("aten::reshape(Tensor self, int[] shape) -> Tensor")) {
       // TODO: if sizes are not available statically, add an operator that reutrns them as a tuple
-      auto sizes = node->namedInput(attr::self)->type()->expect<CompleteTensorType>()->sizes();
+      auto sizes = node->namedInput(attr::self)->type()->expect<TensorType>()->sizes();
       return {grads.at(0).reshape(sizes), nullptr};
 
     } else if (node->matches("aten::type_as(Tensor self, Tensor other) -> Tensor")) {
@@ -157,7 +163,7 @@ static std::vector<Value*> gradientForNode(Node* node, ArrayRef<Value*> grad_val
 
     } else if (node->matches("aten::mm(Tensor self, Tensor mat2) -> Tensor")) {
       SymbolicVariable dmat1, dmat2;
-      if (auto type = inputs.at(0).value()->type()->cast<CompleteTensorType>()) {
+      if (auto type = inputs.at(0).value()->type()->cast<TensorType>()) {
         auto sizes = type->sizes(), strides = type->strides();
         if (strides.at(0) == 1 && strides.at(1) == sizes.at(0)) {
           dmat1 = inputs.at(1).mm(grads.at(0).t()).t();
@@ -167,7 +173,7 @@ static std::vector<Value*> gradientForNode(Node* node, ArrayRef<Value*> grad_val
       } else {
         dmat1 = grads.at(0).mm(inputs.at(1).t());
       }
-      if (auto type = inputs.at(1).value()->type()->cast<CompleteTensorType>()) {
+      if (auto type = inputs.at(1).value()->type()->cast<TensorType>()) {
         auto sizes = type->sizes(), strides = type->strides();
         if (strides.at(0) == 1 && strides.at(1) == sizes.at(0)) {
           dmat2 = grads.at(0).t().mm(inputs.at(0)).t();

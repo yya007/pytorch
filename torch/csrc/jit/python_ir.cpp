@@ -433,8 +433,8 @@ void initPythonIRBindings(PyObject * module_) {
       switch(t->kind()) {
         case TypeKind::DynamicType:
           return "DynamicType";
-        case TypeKind::CompleteTensorType:
-          return "CompleteTensorType";
+        case TypeKind::TensorType:
+          return "TensorType";
         case TypeKind::TupleType:
           return "TupleType";
         default:
@@ -443,13 +443,13 @@ void initPythonIRBindings(PyObject * module_) {
         }
     })
     .def("sizes",[](Type& t) {
-      return t.expect<CompleteTensorType>()->sizes();
+      return t.expect<TensorType>()->sizes();
     })
     .def("strides",[](Type& t) {
-      return t.expect<CompleteTensorType>()->strides();
+      return t.expect<TensorType>()->strides();
     })
     .def("contiguous",[](Type& t) {
-      return std::static_pointer_cast<Type>(t.expect<CompleteTensorType>()->contiguous());
+      return std::static_pointer_cast<Type>(t.expect<TensorType>()->contiguous());
     })
     .def("scalarType",[](Type& t) {
       return at::toString(t.expect<TensorType>()->scalarType());

@@ -11,8 +11,7 @@ namespace torch { namespace jit {
 // - NumberType outputs are changed to DynamicType.
 // - prim::Constant nodes which are numbers get changed into 0-dim tensors of
 //   the corresponding type
-// - prim::TensorToNum, prim::ImplicitTensorToNum and prim::NumToTensor nodes
-// are erased.
+// - prim::TensorToNum, and prim::NumToTensor nodes are erased.
 //
 // The pass assumes that DCE will be called sometime after.
 TORCH_API void EraseNumberTypes(const std::shared_ptr<Graph>& graph);

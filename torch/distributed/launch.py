@@ -85,9 +85,7 @@ Set your device to local rank using either
 
     >>> torch.cuda.set_device(arg.local_rank)  # before your code runs
 
-or
-
-::
+    or
 
     >>> with torch.cuda.device(arg.local_rank):
     >>>    # your code to run

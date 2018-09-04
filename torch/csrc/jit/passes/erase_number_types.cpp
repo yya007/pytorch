@@ -21,7 +21,6 @@ static void EraseNumberTypesOnBlock(Block* block) {
         }
       } break;
       case prim::TensorToNum:
-      case prim::ImplicitTensorToNum:
       case prim::NumToTensor: {
         it->output()->replaceAllUsesWith(it->inputs()[0]);
         // Let DCE cleanup
@@ -29,7 +28,7 @@ static void EraseNumberTypesOnBlock(Block* block) {
       default: {
         for(auto o : it->outputs()) {
           if (o->type()->isSubtypeOf(NumberType::get())) {
-            o->setType(CompleteTensorType::fromNumberType(o->type()));
+            o->setType(TensorType::fromNumberType(o->type()));
           }
         }
       } break;

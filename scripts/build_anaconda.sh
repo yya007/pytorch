@@ -318,6 +318,7 @@ if [[ -n $integrated ]]; then
     #add_package $cuda_feature_name
     conda_channel+=('-c pytorch')
 
+    caffe2_cmake_args+=("-DUSE_ATEN=ON")
   fi
 fi
 

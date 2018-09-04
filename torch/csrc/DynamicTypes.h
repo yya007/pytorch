@@ -29,7 +29,7 @@ void registerDtypeObject(THPDtype *dtype, at::ScalarType scalarType);
 void registerLayoutObject(THPLayout *layout, at::Backend backend);
 
 PyObject* createPyObject(const at::Storage& storage);
-at::Storage createStorage(PyObject* obj);
+std::unique_ptr<at::Storage> createStorage(PyObject* obj);
 bool isStorage(PyObject* obj);
 
 THPDtype* getDtype(at::ScalarType scalarType);

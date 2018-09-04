@@ -1,9 +1,7 @@
 #pragma once
 #include <memory>
-#include "caffe2/core/net.h"
+#include <unordered_map>
 #include "caffe2/core/tensor.h"
-#include "caffe2/proto/metanet.pb.h"
-#include "caffe2/proto/predictor_consts.pb.h"
 
 namespace caffe2 {
 
@@ -33,25 +31,6 @@ struct PredictorConfig {
   // We provide a separate set of parameter names here as whole parameter set
   // passed in by a user might contain extra tensors used by other models
   std::vector<std::string> parameter_names;
-
-  // TODO We still save ws is because of the current design of workspace and
-  // tensor. Once tensor support intrusive_ptr, we'll get rid of this and use
-  // parameters to construct Workspace
-  std::shared_ptr<Workspace> ws;
 };
-
-Workspace makeWorkspace(std::shared_ptr<PredictorParameters> parameters);
-
-PredictorConfig makePredictorConfig(
-    const MetaNetDef& net,
-    Workspace* parent = nullptr,
-    bool run_init = true);
-
-PredictorConfig makePredictorConfig(
-    const NetDef& init_net,
-    const NetDef& run_net,
-    Workspace* parent = nullptr,
-    bool run_init = true,
-    int optimization = 1);
 
 } // namespace caffe2

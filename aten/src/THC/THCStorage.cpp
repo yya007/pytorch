@@ -8,8 +8,6 @@
 #include "generic/THCStorage.cpp"
 #include "THCGenerateAllTypes.h"
 
-#include <ATen/core/intrusive_ptr.h>
-
 void THCStorage_resize(THCState *state, THCStorage *self, ptrdiff_t size)
 {
   THArgCheck(size >= 0, 2, "invalid size");
@@ -24,7 +22,7 @@ void THCStorage_resize(THCState *state, THCStorage *self, ptrdiff_t size)
 
   if(size == 0)
   {
-    self->set_data_ptr(at::DataPtr(nullptr, at::Device(at::DeviceType::CUDA, device)));
+    self->set_data_ptr(at::DataPtr(nullptr, at::Device(at::kCUDA, device)));
     self->set_size(0);
   }
   else
@@ -50,16 +48,16 @@ void THCStorage_resize(THCState *state, THCStorage *self, ptrdiff_t size)
 }
 
 int THCStorage_getDevice(THCState* state, const THCStorage* storage) {
-  return storage->device().index();
+  return storage->getDevice();
 }
 
 THC_API THCStorage* THCStorage_new(
     THCState* state,
     at::ScalarType scalar_type) {
-  THStorage* storage = c10::make_intrusive<at::StorageImpl>(
-      at::scalarTypeToDataType(scalar_type),
+  THStorage* storage = new THStorage(
+      scalar_type,
       0,
       state->cudaDeviceAllocator,
-      true).release();
+      true);
   return storage;
 }

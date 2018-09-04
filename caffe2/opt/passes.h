@@ -3,7 +3,7 @@
 
 #include "caffe2/core/common.h"
 #include "caffe2/core/workspace.h"
-#include "caffe2/proto/caffe2_pb.h"
+#include "caffe2/proto/caffe2.pb.h"
 
 #include "nomnigraph/Representations/NeuralNet.h"
 
@@ -21,7 +21,7 @@ namespace caffe2 {
  * use a different registry and inherit from WorkspaceOptimizationPass.
  */
 
-class CAFFE2_API OptimizationPass {
+class OptimizationPass {
  public:
   OptimizationPass(NNModule* nn) : nn_(nn) {}
   virtual void run() = 0;
@@ -31,7 +31,7 @@ class CAFFE2_API OptimizationPass {
   NNModule* nn_;
 };
 
-class CAFFE2_API WorkspaceOptimizationPass : public OptimizationPass {
+class WorkspaceOptimizationPass : public OptimizationPass {
  public:
   WorkspaceOptimizationPass(NNModule* nn, Workspace* ws) : OptimizationPass(nn), ws_(ws) {}
   virtual ~WorkspaceOptimizationPass(){}

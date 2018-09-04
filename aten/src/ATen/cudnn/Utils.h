@@ -4,7 +4,7 @@
 #include "ATen/cuda/Exceptions.h"
 #include "THC/THC.h"
 #include "cudnn-wrapper.h"
-#include "Handle.h"
+#include "Handles.h"
 
 namespace at { namespace native {
 
