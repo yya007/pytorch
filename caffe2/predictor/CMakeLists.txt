@@ -1,7 +1,6 @@
 set(Caffe2_PREDICTOR_CPU_SRC
     "${CMAKE_CURRENT_SOURCE_DIR}/predictor.cc"
     "${CMAKE_CURRENT_SOURCE_DIR}/predictor_utils.cc"
-    "${CMAKE_CURRENT_SOURCE_DIR}/predictor_config.cc"
 )
 set(Caffe2_PREDICTOR_CPU_TEST_SRC
   "${CMAKE_CURRENT_SOURCE_DIR}/predictor_test.cc")

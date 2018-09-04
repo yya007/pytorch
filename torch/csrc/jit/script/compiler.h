@@ -102,24 +102,22 @@ private:
 };
 
 struct TORCH_API BuiltinFunction : public SugaredValue {
-  BuiltinFunction(Symbol symbol, at::optional<NamedValue> value)
-      : symbol(std::move(symbol)), value(std::move(value)) {}
-
-  // The symbol of the function (e.g. `aten::relu`).
-  Symbol symbol;
+  BuiltinFunction(const std::string& name, at::optional<NamedValue> value)
+    : name(name), value(std::move(value)) {}
+  std::string name;
 
   // if this is method, then this is the self argument.
   at::optional<NamedValue> value;
 
-  std::string kind() const override {
+  virtual std::string kind() const override {
     return "builtin";
   }
-  std::shared_ptr<SugaredValue> call(
-      SourceRange loc,
-      Method& m,
-      at::ArrayRef<NamedValue> attributes,
-      at::ArrayRef<NamedValue> inputs,
-      size_t n_binders) override;
+  virtual std::shared_ptr<SugaredValue> call(
+    SourceRange loc,
+    Method & m,
+    at::ArrayRef<NamedValue> attributes,
+    at::ArrayRef<NamedValue> inputs,
+    size_t n_binders) override;
 };
 
 using Resolver = std::function<std::shared_ptr<
@@ -145,16 +143,13 @@ TORCH_API void ensureTensors(const SourceRange& range, at::ArrayRef<Value*> valu
 // try to match a list if inputs and keyword 'attributes' to this schema,
 // if it works return the flat list of positional inputs to the call
 // if it returns nullopt, then failure_messages contains a good error report
-// set convert_tensor_to_num to true if ImplicitTensorToNums should be inserted to
-// match the schema
 TORCH_API at::optional<std::vector<Value*>> tryMatchSchema(
   const FunctionSchema& schema,
   const SourceRange& loc,
   Graph& graph,
   at::ArrayRef<NamedValue> inputs,
   at::ArrayRef<NamedValue> attributes,
-  std::ostream& failure_messages,
-  bool convert_tensors_to_nums);
+  std::ostream& failure_messages);
 
 TORCH_API FunctionSchema extractSchemaFromDef(const Def &def, bool is_method=false);
 

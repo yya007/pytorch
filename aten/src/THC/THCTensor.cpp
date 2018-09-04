@@ -123,21 +123,21 @@ void THCTensor_resizeNd(THCState *state, THCTensor *self, int nDimension, const 
 
   if(nDimension != self->dim())
   {
-    self->resize_dim(nDimension);
+    THTensor_resizeDim(self, nDimension);
   }
 
   totalSize = 1;
   for(d = nDimension-1; d >= 0; d--)
   {
-    self->set_size(d, size[d]);
+    THTensor_setSizeAtDim(self, d, size[d]);
     if(stride && (stride[d] >= 0) ) {
-      self->set_stride(d, stride[d]);
+      THTensor_setStrideAtDim(self, d, stride[d]);
     } else {
       if(d == nDimension-1) {
-        self->set_stride(d, 1);
+        THTensor_setStrideAtDim(self, d, 1);
       } else {
         // Keep stride monotonically increasing to match NumPy.
-        self->set_stride(d, std::max<int64_t>(self->size(d+1),1)*self->stride(d+1));
+        THTensor_setStrideAtDim(self, d, std::max<int64_t>(self->size(d+1),1)*self->stride(d+1));
       }
     }
     totalSize += (self->size(d)-1)*self->stride(d);
@@ -189,11 +189,12 @@ void THCTensor_setStorageNd(THCState *state, THCTensor *self, THCStorage *storag
     if (!THTensor_getStoragePtr(self)) {
       THError("Tensor: invalid null storage");
     }
-    auto scalar_type = at::dataTypeToScalarType(THTensor_getStoragePtr(self)->dtype());
+    auto scalar_type = THTensor_getStoragePtr(self)->scalar_type();
+    THStorage_free(THTensor_getStoragePtr(self));
 
     if (storage) {
-      c10::raw::intrusive_ptr::incref(storage);
       THTensor_stealAndSetStoragePtr(self, storage);
+      THStorage_retain(THTensor_getStoragePtr(self));
     } else {
       THTensor_stealAndSetStoragePtr(self, THCStorage_new(state, scalar_type));
     }
@@ -203,7 +204,7 @@ void THCTensor_setStorageNd(THCState *state, THCTensor *self, THCStorage *storag
   if (storageOffset < 0) {
     THError("Tensor: invalid storage offset");
   }
-  self->set_storage_offset(storageOffset);
+  THTensor_setStorageOffset(self, storageOffset);
 
   /* size and stride */
   THCTensor_resizeNd(state, self, nDimension, size, stride);
@@ -224,10 +225,10 @@ void THCTensor_squeeze1d(THCState *state, THCTensor *self, THCTensor *src, int d
   {
     for(d = dimension; d < self->dim()-1; d++)
     {
-      self->set_size(d, self->size(d+1));
-      self->set_stride(d, self->stride(d+1));
+      THTensor_setSizeAtDim(self, d, self->size(d+1));
+      THTensor_setStrideAtDim(self, d, self->stride(d+1));
     }
-    self->resize_dim(self->dim() - 1);
+    THTensor_resizeDim(self, self->dim() - 1);
   }
 }
 
@@ -242,23 +243,40 @@ void THCTensor_unsqueeze1d(THCState *state, THCTensor *self, THCTensor *src, int
 
   THCTensor_set(state, self, src);
 
-  self->resize_dim(self->dim() + 1);
+  THTensor_resizeDim(self, self->dim() + 1);
   for (d = self->dim()-1; d > dimension; d--) {
-    self->set_size(d, self->size(d-1));
-    self->set_stride(d, self->stride(d-1));
+    THTensor_setSizeAtDim(self, d, self->size(d-1));
+    THTensor_setStrideAtDim(self, d, self->stride(d-1));
   }
   if (dimension+1 < self->dim()) {
-    self->set_stride(dimension, self->size(dimension+1) * self->stride(dimension+1));
+    THTensor_setStrideAtDim(self, dimension, self->size(dimension+1) * self->stride(dimension+1));
   } else {
-    self->set_stride(dimension, 1);
+    THTensor_setStrideAtDim(self, dimension, 1);
   }
-  self->set_size(dimension, 1);
+  THTensor_setSizeAtDim(self, dimension, 1);
+}
+
+bool THCTensor_isContiguous(THCState *state, const THCTensor *self) {
+  if (self->is_empty()) return true;
+  int64_t z = 1;
+  int d;
+  for(d = self->dim()-1; d >= 0; d--)
+  {
+    if(self->size(d) != 1)
+    {
+      if(self->stride(d) == z)
+        z *= self->size(d);
+      else
+        return false;
+    }
+  }
+  return true;
 }
 
 bool THCTensor_allContiguous(THCState *state, THCTensor **inputs, int numInputs) {
   THAssert(numInputs > 0);
   for (int i = 0; i < numInputs; ++i) {
-    if (!inputs[i]->is_contiguous()) {
+    if (!THCTensor_isContiguous(state, inputs[i])) {
       return false;
     }
   }
@@ -266,16 +284,20 @@ bool THCTensor_allContiguous(THCState *state, THCTensor **inputs, int numInputs)
 }
 
 ptrdiff_t THCTensor_nElement(THCState *state, const THCTensor *self) {
-  if(THTensor_nDimensionLegacyAll(self) == 0) {
+  if(THTensor_nDimensionLegacyAll(self) == 0)
     return 0;
-  } else {
-    return self->numel();
+  else
+  {
+    ptrdiff_t nElement = 1;
+    int d;
+    for(d = 0; d < THTensor_nDimension(self); d++)
+      nElement *= self->size(d);
+    return nElement;
   }
 }
 
-// NB: It is INVALID to call this on an UndefinedTensor
 void THCTensor_retain(THCState *state, THCTensor *self) {
-  c10::raw::intrusive_ptr::incref(self);
+  self->retain();
 }
 
 void THCTensor_free(THCState *state, THCTensor *self) {

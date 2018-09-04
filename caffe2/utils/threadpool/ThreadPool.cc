@@ -18,7 +18,11 @@ namespace caffe2 {
 
 // Default smallest amount of work that will be partitioned between
 // multiple threads; the runtime value is configurable
-constexpr size_t kDefaultMinWorkSize = 1;
+#if CAFFE2_ANDROID
+constexpr size_t kDefaultMinWorkSize = 8;
+#else
+constexpr size_t kDefaultMinWorkSize = 80;
+#endif
 
 std::unique_ptr<ThreadPool> ThreadPool::defaultThreadPool() {
   CAFFE_ENFORCE(cpuinfo_initialize(), "cpuinfo initialization failed");

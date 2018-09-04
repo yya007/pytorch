@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ATen/core/Generator.h"
+#include "ATen/Generator.h"
 #include "ATen/Utils.h"
 #include "ATen/core/Error.h"
 

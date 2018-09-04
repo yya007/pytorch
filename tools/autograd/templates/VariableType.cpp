@@ -59,19 +59,19 @@ bool VariableType::is_cuda() const { return baseType->is_cuda(); }
 bool VariableType::is_sparse() const { return baseType->is_sparse(); }
 bool VariableType::is_distributed() const { return baseType->is_distributed(); }
 
-Storage VariableType::storage(bool resizable) const {
+std::unique_ptr<Storage> VariableType::storage(bool resizable) const {
   return baseType->storage();
 }
-Storage VariableType::storage(size_t size, bool resizable) const {
+std::unique_ptr<Storage> VariableType::storage(size_t size, bool resizable) const {
   return baseType->storage(size);
 }
-Storage VariableType::storageFromBlob(void * data, int64_t size, const std::function<void(void*)> & deleter) const {
+std::unique_ptr<Storage> VariableType::storageFromBlob(void * data, int64_t size, const std::function<void(void*)> & deleter) const {
   return baseType->storageFromBlob(data, size, deleter);
 }
-Storage VariableType::unsafeStorageFromTH(void * th_pointer, bool retain) const {
+std::unique_ptr<Storage> VariableType::unsafeStorageFromTH(void * th_pointer, bool retain) const {
   return baseType->unsafeStorageFromTH(th_pointer, retain);
 }
-Storage VariableType::storageWithAllocator(int64_t size, Allocator* allocator) const {
+std::unique_ptr<Storage> VariableType::storageWithAllocator(int64_t size, Allocator* allocator) const {
   return baseType->storageWithAllocator(size, allocator);
 }
 Tensor VariableType::unsafeTensorFromTH(void * th_pointer, bool retain) const {

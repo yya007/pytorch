@@ -19,3 +19,4 @@
 
 // This exists to have a data-type independent way of freeing (necessary for THPPointer).
 TH_API void THStorage_free(THStorage *storage);
+TH_API void THStorage_weakFree(THStorage *storage);

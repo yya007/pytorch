@@ -9,12 +9,7 @@
 
 namespace at {
 
-inline Tensor & Tensor::operator=(Tensor const & rhs) && {
-  return copy_(rhs);
-}
-inline Tensor & Tensor::operator=(Tensor && rhs) && {
-  return copy_(rhs);
-}
+
 inline Tensor & Tensor::operator=(Scalar v) && {
   return fill_(v);
 }
@@ -47,7 +42,7 @@ inline Tensor& Tensor::operator/=(Scalar other) {
 }
 inline Tensor Tensor::operator[](Scalar index) const {
   AT_CHECK(
-      index.isIntegral(),
+      index.local().isIntegral(),
       "Can only index tensors with integral scalars (got ",
       index.toTensor().type().toString(), ")");
   return select(0, index.toLong());
@@ -60,7 +55,7 @@ inline Tensor Tensor::operator[](Tensor index) const {
       index.dim() == 0,
       "Can only index with tensors that are scalars (zero-dim)");
   // The Scalar(Tensor) constructor is explicit, so we need to call it.
-  return this->operator[](index._local_scalar());
+  return this->operator[](Scalar(index));
 }
 inline Tensor Tensor::operator[](int64_t index) const {
   return select(0, index);

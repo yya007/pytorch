@@ -8,11 +8,11 @@ at::Type& getType(at::Backend backend, at::ScalarType type) {
 }
 
 at::Type& CPU(at::ScalarType type) {
-  return torch::getType(at::Backend::CPU, type);
+  return torch::getType(at::kCPU, type);
 }
 
 at::Type& CUDA(at::ScalarType type) {
-  return torch::getType(at::Backend::CUDA, type);
+  return torch::getType(at::kCUDA, type);
 }
 
 at::Tensor toTensor(const at::Scalar& scalar) {

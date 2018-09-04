@@ -349,7 +349,7 @@ public:
   virtual int64_t dim() const override {
     throw std::runtime_error("dim() on ContainerTensor");
   }
-  virtual const at::Storage& storage() const override {
+  virtual std::unique_ptr<at::Storage> storage() override {
     throw std::runtime_error("storage() on ContainerTensor");
   }
 };
@@ -719,6 +719,9 @@ struct InterpreterStateImpl {
     current_pc = pc;
     current_stage++;
   }
+  const TensorType & tensorTypeForInput(size_t i) const {
+    return *function->preprocess.stage_input_types.at(current_stage).at(i)->expect<TensorType>();
+  }
   int get(const ListHandle<int> & list, int i) {
     return int_data[list.start + i];
   };
@@ -781,6 +784,10 @@ InterpreterState::~InterpreterState() = default;
 
 void InterpreterState::runOneStage(Stack & stack) {
   return pImpl->runOneStage(stack);
+}
+
+const TensorType & InterpreterState::tensorTypeForInput(size_t i) const {
+  return pImpl->tensorTypeForInput(i);
 }
 
 InterpreterState InterpreterState::clone() const {

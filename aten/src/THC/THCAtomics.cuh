@@ -4,7 +4,8 @@
 #include "THC.h"
 #include "THCHalf.h"
 #include "THCNumerics.cuh"
-#include "ATen/ATen.h"
+
+namespace at { struct Half; }
 
 template <typename T, size_t n>
 struct AtomicAddIntegerImpl;
@@ -117,8 +118,8 @@ static inline  __device__ void atomicAdd(half *address, half val) {
     old = atomicCAS(address_as_ui, assumed, old);
   } while (assumed != old);
 }
-static inline __device__ void atomicAdd(at::Half *address, at::Half val) {
-  atomicAdd(reinterpret_cast<half*>(address), val);
+static inline __device__ void atomicAdd(at::Half *address, half val) {
+  return atomicAdd(reinterpret_cast<half*>(address), val);
 }
 
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 600 || CUDA_VERSION < 8000)

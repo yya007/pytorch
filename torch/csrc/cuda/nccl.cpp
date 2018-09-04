@@ -72,7 +72,7 @@ ArrayRef<ncclComm_t> _get_communicators(TensorList inputs) {
 }
 
 ncclDataType_t _get_data_type(const Type& type) {
-  if (type.backend() != Backend::CUDA) {
+  if (type.backend() != kCUDA) {
     throw std::runtime_error("Unconvertible NCCL type");
   }
   switch (type.scalarType()) {

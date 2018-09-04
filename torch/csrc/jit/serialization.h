@@ -103,10 +103,10 @@ class PyTorchFileReader {
     }
     readAndValidateFileFooter();
   }
-  std::tuple<at::DataPtr, size_t> getLastRecord() {
+  std::tuple<std::shared_ptr<void>, size_t> getLastRecord() {
     return getRecordWithKey(last_record_offset);
   }
-  std::tuple<at::DataPtr, size_t> getRecordWithKey(uint64_t key) {
+  std::tuple<std::shared_ptr<void>, size_t> getRecordWithKey(uint64_t key) {
     if (key + kFieldAlignment > file_size) {
       throw std::runtime_error("Provided key is larger than the size of the file.");
     }
@@ -122,14 +122,13 @@ class PyTorchFileReader {
     }
     auto size = read64BitIntegerLittleEndian();
     seekToNextAlignmentBoundary();
-    auto ptr = malloc(size);
-    at::DataPtr retval(ptr, ptr, free, at::kCPU);
-    if (!std::fread(ptr, size, 1, fp)) {
+    std::shared_ptr<void> retval(malloc(size), free);
+    if (!std::fread(retval.get(), size, 1, fp)) {
       wrapPErrorAndThrow("Failed to read data from record");
     }
     cursor += size;
     seekToNextAlignmentBoundary();
-    return std::tuple<at::DataPtr, size_t>(std::move(retval), size);
+    return std::tuple<std::shared_ptr<void>, size_t>(retval, size);
   }
   ~PyTorchFileReader() {
     std::fclose(fp);

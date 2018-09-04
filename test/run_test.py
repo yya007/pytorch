@@ -50,6 +50,7 @@ ROCM_BLACKLIST = [
     'multiprocessing',
     'nccl',
     'nn',
+    'sparse',
     'utils',
 ]
 

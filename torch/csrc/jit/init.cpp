@@ -21,7 +21,6 @@
 #include "torch/csrc/jit/passes/constant_propagation.h"
 #include "torch/csrc/jit/passes/loop_unrolling.h"
 #include "torch/csrc/jit/passes/to_batch.h"
-#include "torch/csrc/jit/passes/lower_tuples.h"
 #include "torch/csrc/jit/passes/specialize_undef.h"
 #include "torch/csrc/jit/graph_executor.h"
 #include "torch/csrc/jit/script/init.h"
@@ -33,13 +32,6 @@
 #include "torch/csrc/jit/operator.h"
 
 #include <pybind11/functional.h>
-
-#include <memory>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <tuple>
-#include <utility>
 
 namespace torch  { namespace jit {
 
@@ -68,7 +60,6 @@ void initJITBindings(PyObject *module) {
 
   m.def("_jit_init", loadPythonClasses)
    .def("_jit_pass_onnx", ToONNX)
-   .def("_jit_pass_lower_all_tuples", LowerAllTuples)
    .def("_jit_pass_onnx_peephole", PeepholeOptimizeONNX)
    .def("_jit_pass_fuse", FuseGraph)
    .def("_jit_pass_dce", [](std::shared_ptr<Graph>& g) {
@@ -84,9 +75,6 @@ void initJITBindings(PyObject *module) {
    .def("_jit_pass_lint", LintGraph)
    .def("_jit_pass_shape_analysis", [](Graph& graph, py::tuple inputs, bool with_grad) {
      PropagateInputShapes(graph, ArgumentSpec(with_grad, evilDeprecatedBadCreateStackDoNotUse(inputs, graph.inputs())));
-   })
-   .def("_jit_pass_complete_shape_analysis", [](Graph& graph, py::tuple inputs, bool with_grad) {
-     PropagateInputShapes(graph, CompleteArgumentSpec(with_grad, evilDeprecatedBadCreateStackDoNotUse(inputs, graph.inputs())));
    })
    .def("_jit_pass_remove_expands", RemoveExpands)
    .def("_jit_pass_erase_number_types", EraseNumberTypes)
@@ -120,13 +108,12 @@ void initJITBindings(PyObject *module) {
        return differentiate(g_clone, requires_grad);
    });
 
-  py::class_<CompleteArgumentSpec>(m, "CompleteArgumentSpec")
-      .def("__repr__", [](CompleteArgumentSpec& self) {
+  py::class_<ArgumentSpec>(m, "ArgumentSpec")
+      .def("__repr__", [](ArgumentSpec& self) {
         std::ostringstream s;
         s << self;
         return s.str();
       });
-  py::class_<ArgumentSpec>(m, "ArgumentSpec");
   py::class_<Code>(m, "Code")
       .def("executors", [](Code& c) {
         return py::make_iterator(c.executors().begin(), c.executors().end());
@@ -183,9 +170,10 @@ void initJITBindings(PyObject *module) {
   py::class_<GraphExecutor>(m, "GraphExecutor", py::dynamic_attr())
       .def(
           py::init([](py::function func,
-                      py::tuple inputs,
+                      variable_list inputs,
                       bool optimize) {
-              auto graph = tracer::createGraphByTracing(func, toStack(inputs));
+              size_t num_inputs = inputs.size();
+              auto graph = tracer::createGraphByTracing(func, std::move(inputs), num_inputs);
               return GraphExecutor(graph, optimize);
           }),
           py::arg("func"),
@@ -222,13 +210,13 @@ void initJITBindings(PyObject *module) {
     py::class_<PyTorchFileReader>(m, "PyTorchFileReader")
       .def(py::init<std::string>())
       .def("get_record_with_key", [](PyTorchFileReader &self, uint64_t key) {
-        at::DataPtr data;
+        std::shared_ptr<void> data;
         size_t size;
         std::tie(data, size) = self.getRecordWithKey(key);
         return py::bytes(reinterpret_cast<const char*>(data.get()), size);
       })
       .def("get_last_record", [](PyTorchFileReader &self){
-        at::DataPtr data;
+        std::shared_ptr<void> data;
         size_t size;
         std::tie(data, size) = self.getLastRecord();
         return py::bytes(reinterpret_cast<const char*>(data.get()), size);
@@ -244,14 +232,10 @@ void initJITBindings(PyObject *module) {
           "Found ", operations.size(), " overloads for operator ",
           qualified_name, "! Overloads are not supported from Python.");
       std::shared_ptr<Operator> op = operations[0];
-      AT_ASSERT(op != nullptr);
-      std::ostringstream docstring;
-      docstring << "Automatically bound operator '" << qualified_name
-                << "' with schema: " << op->schema();
       return py::cpp_function([op](py::args args, py::kwargs kwargs) {
         return invokeOperatorFromPython(
             *op, std::move(args), std::move(kwargs));
-      }, py::name(qualified_name.c_str()), py::doc(docstring.str().c_str()));
+      });
     } catch (const at::Error& error) {
       throw std::runtime_error(error.what_without_backtrace());
     }

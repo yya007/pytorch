@@ -10,16 +10,10 @@ else()
 endif()
 
 option(BUILD_TORCH_TEST "Build torch test binaries" ON)
-option(TORCH_STATIC "Build libtorch.a rather than libtorch.so" OFF)
-
-# TODO: Unify with version from setup.py
-set(TORCH_VERSION_MAJOR 0)
-set(TORCH_VERSION_MINOR 4)
-set(TORCH_VERSION_PATCH 1)
-set(TORCH_VERSION "${TORCH_VERSION_MAJOR}.${TORCH_VERSION_MINOR}.${TORCH_VERSION_PATCH}")
 
 set(TORCH_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-set(TORCH_ROOT "${TORCH_SRC_DIR}/..")
+
+add_subdirectory(../third_party/nanopb protobuf-nanopb)
 
 if(NOT TORCH_INSTALL_BIN_DIR)
   set(TORCH_INSTALL_BIN_DIR bin)
@@ -61,9 +55,9 @@ else()
 endif()
 
 # Generate files
-set(TOOLS_PATH "${TORCH_ROOT}/tools")
+set(TOOLS_PATH "${TORCH_SRC_DIR}/../tools")
 
-configure_file("${TORCH_ROOT}/aten/src/ATen/common_with_cwrap.py"
+configure_file("${TORCH_SRC_DIR}/../aten/src/ATen/common_with_cwrap.py"
                "${TOOLS_PATH}/shared/cwrap_common.py"
                COPYONLY)
 
@@ -119,7 +113,7 @@ add_custom_command(
   "${TOOLS_PATH}/jit/gen_jit_dispatch.py"
   "${TOOLS_PATH}/jit/templates/register_aten_ops.cpp"
   "${TOOLS_PATH}/jit/templates/aten_interned_strings.h"
-  WORKING_DIRECTORY "${TORCH_ROOT}")
+  WORKING_DIRECTORY "${TORCH_SRC_DIR}/..")
 
 set(TORCH_SRCS
   ${TORCH_SRC_DIR}/csrc/autograd/anomaly_mode.cpp
@@ -206,12 +200,7 @@ if (NOT NO_API AND NOT USE_ROCM)
 
 endif()
 
-
-if (TORCH_STATIC)
-  add_library(torch STATIC ${TORCH_SRCS})
-else()
-  add_library(torch SHARED ${TORCH_SRCS})
-endif()
+add_library(torch ${TORCH_SRCS})
 
 target_compile_definitions(torch PRIVATE _THP_CORE)
 
@@ -222,7 +211,7 @@ if(MSVC)
   else()
     set (MSVC_RUNTIME_LIBRARY_FLAG "/MD")
   endif()
-
+  
   target_compile_options(torch PRIVATE
     ${MSVC_RUNTIME_LIBRARY_OPTION}
     /Z7
@@ -280,7 +269,8 @@ if (MSVC)
 endif()
 
 target_link_libraries(torch
-  caffe2_library)
+  caffe2_library
+  protobuf-nanopb)
 
 find_package(OpenMP)
 if(OPENMP_FOUND)
@@ -349,9 +339,9 @@ endif()
 
 set(TH_CPU_INCLUDE
   # dense
-  ${TORCH_ROOT}/aten/src/TH
+  ${TORCH_SRC_DIR}/../aten/src/TH
   ${CMAKE_CURRENT_BINARY_DIR}/../aten/src/TH
-  ${TORCH_ROOT}/aten/src
+  ${TORCH_SRC_DIR}/../aten/src
   ${CMAKE_CURRENT_BINARY_DIR}/../aten/src
   ${CMAKE_BINARY_DIR}/aten/src)
 target_include_directories(torch PRIVATE ${TH_CPU_INCLUDE})
@@ -359,13 +349,13 @@ target_include_directories(torch PRIVATE ${TH_CPU_INCLUDE})
 if(USE_CUDA OR USE_ROCM)
   set(TH_CUDA_INCLUDE
     # dense
-    ${TORCH_ROOT}/aten/src/THC
+    ${TORCH_SRC_DIR}/../aten/src/THC
     ${CMAKE_CURRENT_BINARY_DIR}/../aten/src/THC)
   target_include_directories(torch PRIVATE ${TH_CUDA_INCLUDE})
 endif()
 
 set(ATen_CPU_INCLUDE
-  ${TORCH_ROOT}/aten/src
+  ${TORCH_SRC_DIR}/../aten/src
   ${CMAKE_CURRENT_BINARY_DIR}/../aten/src
   ${CMAKE_CURRENT_BINARY_DIR}/../aten/src/ATen
   ${CMAKE_BINARY_DIR}/aten/src)
@@ -376,7 +366,8 @@ target_include_directories(torch PUBLIC
 
 # SYSTEM headers are included with -isystem and thus do not trigger warnings.
 target_include_directories(torch SYSTEM PUBLIC
-  "${TORCH_ROOT}/third_party/cereal/include") # For cereal/
+  "${TORCH_SRC_DIR}/../third_party/cereal/include" # For cereal/
+  "${TORCH_SRC_DIR}/../third_party/nanopb")
 
 set_target_properties(torch PROPERTIES VERSION 1 SOVERSION 1)
 
@@ -399,7 +390,7 @@ if (BUILD_TORCH_TEST AND NOT MSVC AND NOT APPLE AND NOT USE_ROCM)
   target_link_libraries(test_jit torch ${TORCH_CUDA_LIBRARIES})
   target_compile_definitions(test_jit PUBLIC USE_CATCH _FORCE_INLINES)
   target_include_directories(test_jit PUBLIC
-    "${TORCH_ROOT}/third_party/catch/single_include"
+    "${TORCH_SRC_DIR}/../third_party/catch/single_include"
     ${ATen_CPU_INCLUDE})
 
   if (USE_CUDA)
@@ -408,7 +399,7 @@ if (BUILD_TORCH_TEST AND NOT MSVC AND NOT APPLE AND NOT USE_ROCM)
 endif()
 
 if (BUILD_TORCH_TEST AND NOT NO_API AND NOT USE_ROCM)
-  set(TORCH_API_TEST_DIR "${TORCH_ROOT}/test/cpp/api")
+  set(TORCH_API_TEST_DIR "${TORCH_SRC_DIR}/../test/cpp/api")
 
   add_executable(test_api
     ${TORCH_API_TEST_DIR}/any.cpp
@@ -433,7 +424,7 @@ if (BUILD_TORCH_TEST AND NOT NO_API AND NOT USE_ROCM)
 
   target_include_directories(test_api
     PUBLIC
-    "${TORCH_ROOT}/third_party/catch/single_include"
+    "${TORCH_SRC_DIR}/../third_party/catch/single_include"
     ${ATen_CPU_INCLUDE})
 
   target_link_libraries(test_api torch ${TORCH_CUDA_LIBRARIES})
@@ -454,13 +445,3 @@ if (BUILD_TORCH_TEST AND NOT NO_API AND NOT USE_ROCM)
     endif()
   endif()
 endif()
-
-# CMake config for external projects.
-configure_file(
-    ${PROJECT_SOURCE_DIR}/cmake/TorchConfigVersion.cmake.in
-    ${PROJECT_BINARY_DIR}/TorchConfigVersion.cmake
-    @ONLY)
-configure_file(
-    ${TORCH_ROOT}/cmake/TorchConfig.cmake.in
-    ${PROJECT_BINARY_DIR}/TorchConfig.cmake
-    @ONLY)

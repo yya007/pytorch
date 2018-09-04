@@ -358,30 +358,6 @@ class TestOperators(TestCase):
         x = Variable(torch.randn(3, 4), requires_grad=True)
         self.assertONNX(lambda x: x.exp(), x)
 
-    def test_sin(self):
-        x = Variable(torch.randn(3, 4), requires_grad=True)
-        self.assertONNX(lambda x: x.sin(), x)
-
-    def test_cos(self):
-        x = Variable(torch.randn(3, 4), requires_grad=True)
-        self.assertONNX(lambda x: x.cos(), x)
-
-    def test_tan(self):
-        x = Variable(torch.randn(3, 4), requires_grad=True)
-        self.assertONNX(lambda x: x.tan(), x)
-
-    def test_asin(self):
-        x = Variable(torch.rand(3, 4), requires_grad=True)
-        self.assertONNX(lambda x: x.asin(), x)
-
-    def test_acos(self):
-        x = Variable(torch.rand(3, 4), requires_grad=True)
-        self.assertONNX(lambda x: x.acos(), x)
-
-    def test_atan(self):
-        x = Variable(torch.randn(3, 4), requires_grad=True)
-        self.assertONNX(lambda x: x.atan(), x)
-
     def test_flatten(self):
         # Flatten is a special case of Reshape when the output is a 2-D tensor.
         x = Variable(torch.randn(1, 2, 3, 4), requires_grad=True)
@@ -415,10 +391,6 @@ class TestOperators(TestCase):
     def test_norm(self):
         x = Variable(torch.randn(1, 2, 3, 4), requires_grad=True)
         self.assertONNX(lambda x: x.norm(dim=2), (x))
-
-    def test_upsample(self):
-        x = Variable(torch.randn(1, 2, 3, 4), requires_grad=True)
-        self.assertONNX(lambda x: nn.functional.interpolate(x, scale_factor=2., mode='bilinear'), x)
 
     def test_symbolic_override(self):
         """Lifted from fast-neural-style: custom implementation of instance norm

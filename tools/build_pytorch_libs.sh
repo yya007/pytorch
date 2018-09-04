@@ -16,6 +16,7 @@ USE_ROCM=0
 USE_NNPACK=0
 USE_MKLDNN=0
 USE_GLOO_IBVERBS=0
+USE_DISTRIBUTED_MW=0
 FULL_CAFFE2=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -33,6 +34,9 @@ while [[ $# -gt 0 ]]; do
           ;;
       --use-gloo-ibverbs)
           USE_GLOO_IBVERBS=1
+          ;;
+      --use-distributed-mw)
+          USE_DISTRIBUTED_MW=1
           ;;
       --full-caffe2)
           FULL_CAFFE2=1
@@ -114,6 +118,9 @@ if [[ $USE_GLOO_IBVERBS -eq 1 ]]; then
     GLOO_FLAGS+=" -DUSE_IBVERBS=1 -DBUILD_SHARED_LIBS=1"
     THD_FLAGS="-DUSE_GLOO_IBVERBS=1"
 fi
+if [[ $USE_DISTRIBUTED_MW -eq 1 ]]; then
+    THD_FLAGS+="-DUSE_DISTRIBUTED_MW=1"
+fi
 CWRAP_FILES="\
 $BASE_DIR/torch/lib/ATen/Declarations.cwrap;\
 $BASE_DIR/torch/lib/THNN/generic/THNN.h;\
@@ -123,8 +130,8 @@ CUDA_NVCC_FLAGS=$C_FLAGS
 if [[ -z "$CUDA_DEVICE_DEBUG" ]]; then
   CUDA_DEVICE_DEBUG=0
 fi
-if [ -z "$MAX_JOBS" ]; then
-  MAX_JOBS="$(getconf _NPROCESSORS_ONLN)"
+if [ -z "$NUM_JOBS" ]; then
+  NUM_JOBS="$(getconf _NPROCESSORS_ONLN)"
 fi
 
 BUILD_TYPE="Release"
@@ -138,9 +145,6 @@ echo "Building in $BUILD_TYPE mode"
 
 # Used to build an individual library
 function build() {
-  if [[ -z "$CMAKE_ARGS" ]]; then
-    CMAKE_ARGS=()
-  fi
   # We create a build directory for the library, which will
   # contain the cmake output
   mkdir -p build/$1
@@ -148,6 +152,7 @@ function build() {
   BUILD_C_FLAGS=''
   case $1 in
       THCS | THCUNN ) BUILD_C_FLAGS=$C_FLAGS;;
+      nanopb ) BUILD_C_FLAGS=$C_FLAGS" -fPIC -fexceptions";;
       *) BUILD_C_FLAGS=$C_FLAGS" -fexceptions";;
   esac
   # TODO: The *_LIBRARIES cmake variables should eventually be
@@ -183,11 +188,12 @@ function build() {
               -DUSE_CUDA=$USE_CUDA \
               -DNO_NNPACK=$((1-$USE_NNPACK)) \
               -DNCCL_EXTERNAL=1 \
+              -Dnanopb_BUILD_GENERATOR=0 \
               -DCMAKE_DEBUG_POSTFIX="" \
               -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
               ${@:2} \
-              -DCMAKE_EXPORT_COMPILE_COMMANDS=1 ${CMAKE_ARGS[@]}
-  ${CMAKE_INSTALL} -j"$MAX_JOBS"
+              -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+  ${CMAKE_INSTALL} -j"$NUM_JOBS"
   popd
 
   # Fix rpaths of shared libraries
@@ -219,8 +225,8 @@ function build_nccl() {
               -DCMAKE_CXX_FLAGS="$C_FLAGS $CPP_FLAGS $USER_CFLAGS" \
               -DCMAKE_SHARED_LINKER_FLAGS="$USER_LDFLAGS" \
               -DCMAKE_UTILS_PATH="$BASE_DIR/cmake/public/utils.cmake" \
-              -DNUM_JOBS="$MAX_JOBS"
-  ${CMAKE_INSTALL} -j"$MAX_JOBS"
+              -DNUM_JOBS="$NUM_JOBS"
+  ${CMAKE_INSTALL} -j"$NUM_JOBS"
   mkdir -p ${INSTALL_DIR}/lib
   cp "lib/libnccl.so.1" "${INSTALL_DIR}/lib/libnccl.so.1"
   if [ ! -f "${INSTALL_DIR}/lib/libnccl.so" ]; then
@@ -251,11 +257,11 @@ function build_caffe2() {
 
   ${CMAKE_VERSION} $BASE_DIR \
   ${CMAKE_GENERATOR} \
-      -DPYTHON_EXECUTABLE=$PYTORCH_PYTHON \
       -DBUILDING_WITH_TORCH_LIBS=ON \
       -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DBUILD_CAFFE2=$FULL_CAFFE2 \
       -DBUILD_TORCH=$BUILD_TORCH \
+      -DBUILD_ATEN=ON \
       -DBUILD_PYTHON=$FULL_CAFFE2 \
       -DBUILD_BINARY=OFF \
       -DBUILD_SHARED_LIBS=$BUILD_SHARED_LIBS \
@@ -264,7 +270,6 @@ function build_caffe2() {
       -DCAFFE2_STATIC_LINK_CUDA=$CAFFE2_STATIC_LINK_CUDA \
       -DUSE_ROCM=$USE_ROCM \
       -DUSE_NNPACK=$USE_NNPACK \
-      -DCUDA_DEVICE_DEBUG=$CUDA_DEVICE_DEBUG \
       -DCUDNN_INCLUDE_DIR=$CUDNN_INCLUDE_DIR \
       -DCUDNN_LIB_DIR=$CUDNN_LIB_DIR \
       -DCUDNN_LIBRARY=$CUDNN_LIBRARY \
@@ -281,7 +286,7 @@ function build_caffe2() {
       # STOP!!! Are you trying to add a C or CXX flag?  Add it
       # to CMakeLists.txt and aten/CMakeLists.txt, not here.
       # We need the vanilla cmake build to work.
-  ${CMAKE_INSTALL} -j"$MAX_JOBS"
+  ${CMAKE_INSTALL} -j"$NUM_JOBS"
 
   # Install Python proto files
   if [[ $FULL_CAFFE2 -ne 0 ]]; then

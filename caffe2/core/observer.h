@@ -2,7 +2,6 @@
 
 #include <memory>
 #include <unordered_set>
-
 #include "caffe2/core/logging.h"
 
 namespace caffe2 {
@@ -44,15 +43,7 @@ class ObserverBase {
 template <class T>
 class Observable {
  public:
-  Observable() = default;
-
-  Observable(Observable&&) = default;
-  Observable& operator =(Observable&&) = default;
-
-  virtual ~Observable() = default;
-
-  AT_DISABLE_COPY_AND_ASSIGN(Observable);
-
+  virtual ~Observable(){};
   using Observer = ObserverBase<T>;
 
   /* Returns a reference to the observer after addition. */

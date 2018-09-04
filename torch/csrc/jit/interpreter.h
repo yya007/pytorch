@@ -20,6 +20,7 @@ struct CodeImpl;
 struct InterpreterStateImpl;
 struct Graph;
 struct Node;
+struct TensorType;
 struct IValue;
 using Stack = std::vector<IValue>;
 
@@ -48,6 +49,7 @@ struct InterpreterState {
   // outputs for that stage, suspending the computation.
   // Call this function again continues computation where it left off.
   void runOneStage(Stack & stack);
+  const TensorType & tensorTypeForInput(size_t i) const;
   ~InterpreterState();
   // create a copy of InterpreterState with its current state
   // used when retain_graph=True so that stages can be re-run

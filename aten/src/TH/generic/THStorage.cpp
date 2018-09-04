@@ -26,22 +26,22 @@ THStorage* THStorage_(new)(void)
 
 THStorage* THStorage_(newWithSize)(ptrdiff_t size)
 {
-  THStorage* storage = c10::make_intrusive<at::StorageImpl>(
-      at::scalarTypeToDataType(at::CTypeToScalarType<th::from_type<real>>::to()),
+  THStorage* storage = new THStorage(
+      at::CTypeToScalarType<th::from_type<real>>::to(),
       size,
       getTHDefaultAllocator(),
-      true).release();
+      true);
   return storage;
 }
 
 THStorage* THStorage_(newWithAllocator)(ptrdiff_t size,
                                         at::Allocator *allocator)
 {
-  THStorage* storage = c10::make_intrusive<at::StorageImpl>(
-      at::scalarTypeToDataType(at::CTypeToScalarType<th::from_type<real>>::to()),
+  THStorage* storage = new THStorage(
+      at::CTypeToScalarType<th::from_type<real>>::to(),
       size,
       allocator,
-      true).release();
+      true);
   return storage;
 }
 
@@ -50,13 +50,13 @@ THStorage* THStorage_(newWithMapping)(const char *filename, ptrdiff_t size, int 
 {
   auto scalar_type = at::CTypeToScalarType<th::from_type<real>>::to();
   size_t actual_size = -1;
-  THStorage* storage = c10::make_intrusive<at::StorageImpl>(
-      at::scalarTypeToDataType(scalar_type),
+  THStorage* storage = new THStorage(
+      scalar_type,
       size,
       THMapAllocator::makeDataPtr(
           filename, flags, size * at::elementSize(scalar_type), &actual_size),
       /* allocator */ nullptr,
-      false).release();
+      false);
 
   if (size <= 0) {
     storage->set_size(actual_size / at::elementSize(scalar_type));
@@ -115,12 +115,12 @@ void THStorage_(free)(THStorage *storage)
 
 THStorage* THStorage_(newWithDataAndAllocator)(at::DataPtr&& data, ptrdiff_t size,
                                                at::Allocator* allocator) {
-  THStorage* storage = c10::make_intrusive<at::StorageImpl>(
-      at::scalarTypeToDataType(at::CTypeToScalarType<th::from_type<real>>::to()),
+  THStorage* storage = new THStorage(
+      at::CTypeToScalarType<th::from_type<real>>::to(),
       size,
       std::move(data),
       allocator,
-      true).release();
+      true);
   return storage;
 }
 
@@ -150,7 +150,16 @@ real THStorage_(get)(const THStorage *self, ptrdiff_t idx)
 
 void THStorage_(swap)(THStorage *storage1, THStorage *storage2)
 {
-  std::swap(*storage1, *storage2);
+  std::swap(storage1->scalar_type(), storage2->scalar_type());
+  std::swap(storage1->data_ptr(), storage2->data_ptr());
+  ptrdiff_t tmp_size = storage1->size();
+  storage1->set_size(storage2->size());
+  storage2->set_size(tmp_size);
+  bool tmp_bool = storage1->resizable();
+  storage1->set_resizable(storage2->resizable());
+  storage2->set_resizable(tmp_bool);
+  std::swap(storage1->allocator_, storage2->allocator_);
+  std::swap(storage1->finalizer_, storage2->finalizer_);
 }
 
 #endif

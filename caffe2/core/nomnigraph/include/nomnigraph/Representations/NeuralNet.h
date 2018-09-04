@@ -432,16 +432,6 @@ struct NNNodeMatchCriteria {
       const std::function<bool(NNGraph::NodeRef)>& predicate,
       const std::string& debugString = "No debug string specified")
       : predicate(predicate), debugString(debugString){};
-
-  NNNodeMatchCriteria andCriteria(const NNNodeMatchCriteria& other) {
-    auto thisPredicate = predicate;
-    auto otherPredicate = other.predicate;
-    return NNNodeMatchCriteria(
-        [thisPredicate, otherPredicate](NNGraph::NodeRef node) {
-          return thisPredicate(node) && otherPredicate(node);
-        },
-        debugString + " and " + other.debugString);
-  }
 };
 
 std::ostream& operator<<(
@@ -449,37 +439,41 @@ std::ostream& operator<<(
     const NNNodeMatchCriteria& criteria);
 
 using NNMatchGraph = nom::matcher::MatchGraph<NNNodeMatchCriteria>;
-using NNMatchNode = nom::matcher::MatchNode<NNNodeMatchCriteria>;
 
-// Commonly used criteria.
-
-// The node has a single output and the output has a single consumer.
-NNNodeMatchCriteria criteriaSingleOutputAndConsumer();
-// The node has a unique consumer (there may be multiple edges from output
-// to the single consumer).
-NNNodeMatchCriteria criteriaSingleConsumer();
+bool hasSingleOutputAndConsumer(NNGraph::NodeRef nodeRef);
 
 template <typename NodeType>
-NNNodeMatchCriteria matchOp(const std::string& debugString = "matchOp") {
+NNNodeMatchCriteria matchNodeTypeWithPredicate(
+    const std::function<bool(NNGraph::NodeRef, const NodeType&)> predicate,
+    bool expectedSingleOutputAndConsumer = false,
+    const std::string& debugString = "matchNodeTypeWithPredicate") {
   return NNNodeMatchCriteria(
-      [](NNGraph::NodeRef nodeRef) { return is<NodeType>(nodeRef); },
-      debugString);
-}
-
-NNNodeMatchCriteria matchTensor();
-
-template <typename NodeType>
-NNNodeMatchCriteria matchOp(
-    const std::function<bool(const NodeType&)> predicate,
-    const std::string& debugString = "matchOpWithPredicate") {
-  return NNNodeMatchCriteria(
-      [&predicate](NNGraph::NodeRef nodeRef) {
+      [&predicate, expectedSingleOutputAndConsumer](NNGraph::NodeRef nodeRef) {
         NOM_REQUIRE_OR_RET_FALSE(is<NodeType>(nodeRef));
+        if (expectedSingleOutputAndConsumer) {
+          NOM_REQUIRE_OR_RET_FALSE(hasSingleOutputAndConsumer(nodeRef));
+        }
         NodeType* node = get<NodeType>(nodeRef);
-        return predicate(*node);
+        return predicate(nodeRef, *node);
       },
       debugString);
 };
+
+template <typename NodeType>
+NNNodeMatchCriteria matchNodeType(
+    bool expectedSingleOutputAndConsumer = false,
+    const std::string& debugString = "matchNodeType") {
+  return NNNodeMatchCriteria(
+      [expectedSingleOutputAndConsumer](NNGraph::NodeRef nodeRef) {
+        if (expectedSingleOutputAndConsumer) {
+          NOM_REQUIRE_OR_RET_FALSE(hasSingleOutputAndConsumer(nodeRef));
+        }
+        return is<NodeType>(nodeRef);
+      },
+      debugString);
+}
+
+NNNodeMatchCriteria matchAnyNode();
 
 struct NNNodeMatch {
   static bool isMatch(
@@ -493,9 +487,9 @@ using NNSubgraphMatcher =
     nom::matcher::SubgraphMatcher<NNGraph, NNNodeMatchCriteria, NNNodeMatch>;
 
 // This helper method makes it easy to create matching criteria in NNGraph.
-// For example, operatorSubgraph(opMatch, ...) will refer to a tree like this:
+// For example, operatorTree(opMatch, ...) will refer to a tree like this:
 // ... -> opMatch -> opMatch_Output
-NNMatchGraph::NodeRef operatorSubgraph(
+NNMatchGraph::NodeRef operatorTree(
     NNMatchGraph& g,
     const NNNodeMatchCriteria& root,
     const std::vector<NNMatchGraph::NodeRef>& childrenCriteria = {},
